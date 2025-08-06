@@ -53,16 +53,84 @@ export default {
         'thresholdCount': { value: 0 },
         'enabled': { value: false }
       },
-      vertexShader: '',
-      fragmentShader: ''
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float thresholds[10];
+        uniform int thresholdCount;
+        uniform bool enabled;
+        varying vec2 vUv;
+        
+        void main() {
+          vec4 color = texture2D(tDiffuse, vUv);
+          
+          if (!enabled) {
+            gl_FragColor = color;
+            return;
+          }
+          
+          float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+          
+          // Initialize with black
+          vec3 outputColor = vec3(0.0);
+          
+          // Find which band the luminance falls into
+          for (int i = 0; i < 10; i++) {
+            if (i >= thresholdCount) break;
+            
+            if (luminance <= thresholds[i]) {
+              float intensity = float(i) / float(thresholdCount + 1);
+              outputColor = vec3(intensity);
+              break;
+            }
+          }
+          
+          // If luminance is above all thresholds, use white
+          if (luminance > thresholds[thresholdCount-1]) {
+            outputColor = vec3(1.0);
+          }
+          
+          gl_FragColor = vec4(outputColor, color.a);
+        }
+      `
     }
     this.ditherShader = {
       uniforms: {
         'tDiffuse': { value: null },
         'time': { value: 0.0 }
       },
-      vertexShader: '',
-      fragmentShader: ''
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float time;
+        varying vec2 vUv;
+        
+        // Pseudo-random function
+        float rand(vec2 co) {
+          return fract(sin(dot(co.xy, vec2(12.9898, 78.233)) + time * 0.1) * 43758.5453);
+        }
+        
+        void main() {
+          vec4 color = texture2D(tDiffuse, vUv);
+          
+          // Add slight dithering noise
+          float noise = rand(vUv) * 0.05 - 0.025;
+          
+          gl_FragColor = vec4(color.rgb + vec3(noise), color.a);
+        }
+      `
     }
   },
   async mounted() {
@@ -80,21 +148,8 @@ export default {
   },
   methods: {
     async loadShaders() {
-      try {
-        const [threshVertResponse, threshFragResponse, ditherVertResponse, ditherFragResponse] = await Promise.all([
-          fetch('./src/shaders/threshold.vert'),
-          fetch('./src/shaders/threshold.frag'),
-          fetch('./src/shaders/dither.vert'),
-          fetch('./src/shaders/dither.frag')
-        ])
-        
-        this.thresholdShader.vertexShader = await threshVertResponse.text()
-        this.thresholdShader.fragmentShader = await threshFragResponse.text()
-        this.ditherShader.vertexShader = await ditherVertResponse.text()
-        this.ditherShader.fragmentShader = await ditherFragResponse.text()
-      } catch (error) {
-        console.error('Failed to load shaders:', error)
-      }
+      // No need to load external shaders since they're defined inline
+      return Promise.resolve();
     },
 
     init() {
