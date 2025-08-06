@@ -183,7 +183,9 @@ export default {
       }
 
       const loader = new GLTFLoader()
-      loader.load(`/${modelPath}`, (gltf) => {
+      const baseUrl = import.meta.env.BASE_URL || './';
+      const modelUrl = `${baseUrl}${modelPath}`;
+      loader.load(modelUrl, (gltf) => {
         this.skull = gltf.scene
         this.skull.traverse((child) => {
           if (child.isMesh) {
@@ -210,6 +212,8 @@ export default {
         this.scene.add(this.boundingBoxHelper)
         
         this.scene.add(this.skull)
+      }, undefined, (error) => {
+        console.error('Error loading model:', error);
       })
     },
 

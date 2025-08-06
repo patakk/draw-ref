@@ -4,7 +4,8 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   publicDir: 'public',
-  base: './', 
+  // Update this to match your actual deployment path
+  base: '/static/drawref/', 
   build: {
     assetsDir: 'assets',
     rollupOptions: {
