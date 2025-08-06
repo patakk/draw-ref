@@ -82,10 +82,10 @@ export default {
     async loadShaders() {
       try {
         const [threshVertResponse, threshFragResponse, ditherVertResponse, ditherFragResponse] = await Promise.all([
-          fetch('/src/shaders/threshold.vert'),
-          fetch('/src/shaders/threshold.frag'),
-          fetch('/src/shaders/dither.vert'),
-          fetch('/src/shaders/dither.frag')
+          fetch('./src/shaders/threshold.vert'),
+          fetch('./src/shaders/threshold.frag'),
+          fetch('./src/shaders/dither.vert'),
+          fetch('./src/shaders/dither.frag')
         ])
         
         this.thresholdShader.vertexShader = await threshVertResponse.text()
