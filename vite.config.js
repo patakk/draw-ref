@@ -5,4 +5,12 @@ export default defineConfig({
   plugins: [vue()],
   publicDir: 'public',
   base: './', 
+  build: {
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  }
 })
