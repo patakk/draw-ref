@@ -1,11 +1,11 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
   publicDir: 'public',
-  // Update this to match your actual deployment path
-  base: '/static/drawref/', 
+  base: './',
   build: {
     assetsDir: 'assets',
     rollupOptions: {
@@ -13,5 +13,7 @@ export default defineConfig({
         manualChunks: undefined
       }
     }
-  }
+  },
+  // Add this section to ensure shaders are handled properly if you still want to load them externally
+  assetsInclude: ['**/*.vert', '**/*.frag', '**/*.glsl']
 })
