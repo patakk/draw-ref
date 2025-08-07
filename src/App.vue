@@ -97,7 +97,7 @@
 
       <div class="panel-section">
         <button @click="randomizeAll" class="btn-small master-randomize">
-          Randomize All <font-awesome-icon icon="dice" />
+          Randomize <font-awesome-icon icon="dice" />
         </button>
       </div>
 
