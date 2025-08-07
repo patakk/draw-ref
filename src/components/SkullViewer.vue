@@ -33,7 +33,8 @@ export default {
     return {
       isInitialized: false,
       currentBaseCameraDistance: this.baseCameraDistance,
-      isLoading: false
+      isLoading: false,
+      currentModelPath: null
     }
   },
   created() {
@@ -233,6 +234,9 @@ export default {
     },
 
     loadModel(modelPath) {
+      // Track the currently requested model
+      this.currentModelPath = modelPath
+      
       // Show loading animation
       this.isLoading = true
       
@@ -253,7 +257,7 @@ export default {
       // Check if model is already preloaded
       if (this.preloadedModels.has(modelPath)) {
         const gltf = this.preloadedModels.get(modelPath)
-        this.processLoadedModel(gltf.scene.clone())
+        this.processLoadedModel(gltf.scene.clone(), modelPath)
         return
       }
 
@@ -261,7 +265,7 @@ export default {
       if (this.preloadingPromises.has(modelPath)) {
         this.preloadingPromises.get(modelPath)
           .then((gltf) => {
-            this.processLoadedModel(gltf.scene.clone())
+            this.processLoadedModel(gltf.scene.clone(), modelPath)
           })
           .catch((error) => {
             console.error('Error loading preloaded model:', error)
@@ -276,14 +280,21 @@ export default {
       const modelUrl = `${baseUrl}${modelPath}`
       
       loader.load(modelUrl, (gltf) => {
-        this.processLoadedModel(gltf.scene)
+        this.processLoadedModel(gltf.scene, modelPath)
       }, undefined, (error) => {
         console.error('Error loading model:', error)
         this.isLoading = false
       })
     },
 
-    processLoadedModel(scene) {
+    processLoadedModel(scene, modelPath) {
+      // Only process if this is still the currently requested model
+      if (this.currentModelPath !== modelPath) {
+        // Model was changed while this one was loading, ignore it
+        console.log(`Ignoring loaded model ${modelPath}, current model is ${this.currentModelPath}`)
+        return
+      }
+      
       this.skull = scene
       this.skull.traverse((child) => {
         if (child.isMesh) {
