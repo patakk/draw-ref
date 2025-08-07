@@ -822,5 +822,10 @@ body {
     right: 2em;
     top: 2em;
   }
+
+
+.kofi-link {
+  bottom: 2em;
+}
 }
 </style>
