@@ -514,6 +514,10 @@ export default {
   gap: 8px;
 }
 
+.panel-section:last-child {
+  margin-bottom: 0;
+}
+
 .panel-divider {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 15px;
