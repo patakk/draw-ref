@@ -86,19 +86,16 @@ export default {
   methods: {
     async loadShaders() {
       try {
-        // Load threshold shaders
-        const thresholdVertResponse = await fetch('./src/shaders/threshold.vert')
-        const thresholdFragResponse = await fetch('./src/shaders/threshold.frag')
+        // Import shaders as text using Vite's ?raw suffix
+        const thresholdVert = (await import('../shaders/threshold.vert?raw')).default
+        const thresholdFrag = (await import('../shaders/threshold.frag?raw')).default
+        const ditherVert = (await import('../shaders/dither.vert?raw')).default  
+        const ditherFrag = (await import('../shaders/dither.frag?raw')).default
         
-        this.thresholdShader.vertexShader = await thresholdVertResponse.text()
-        this.thresholdShader.fragmentShader = await thresholdFragResponse.text()
-        
-        // Load dither shaders
-        const ditherVertResponse = await fetch('./src/shaders/dither.vert')
-        const ditherFragResponse = await fetch('./src/shaders/dither.frag')
-        
-        this.ditherShader.vertexShader = await ditherVertResponse.text()
-        this.ditherShader.fragmentShader = await ditherFragResponse.text()
+        this.thresholdShader.vertexShader = thresholdVert
+        this.thresholdShader.fragmentShader = thresholdFrag
+        this.ditherShader.vertexShader = ditherVert
+        this.ditherShader.fragmentShader = ditherFrag
         
       } catch (error) {
         console.error('Error loading shaders:', error)
