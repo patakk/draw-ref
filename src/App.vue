@@ -25,36 +25,79 @@
           <input type="range" min="0.1" max="2" step="0.1" v-model="lightBrightness" @input="updateLightBrightness" class="slider">
           <span class="slider-value">{{ parseFloat(lightBrightness).toFixed(1) }}</span>
           <input type="color" v-model="lightColor" @input="updateLightColor" class="color-picker">
+          <button @click="locks.lightColor = !locks.lightColor" class="lock-button" :class="{ locked: locks.lightColor }">
+            <font-awesome-icon :icon="locks.lightColor ? 'lock' : 'lock-open'" />
+          </button>
         </div>
         <div class="slider-container">
           <label class="slider-label">Fill</label>
           <input type="range" min="0" max="2" step="0.1" v-model="light2Brightness" @input="updateLight2Brightness" class="slider">
           <span class="slider-value">{{ parseFloat(light2Brightness).toFixed(1) }}</span>
           <input type="color" v-model="light2Color" @input="updateLight2Color" class="color-picker">
+          <button @click="locks.light2Color = !locks.light2Color" class="lock-button" :class="{ locked: locks.light2Color }">
+            <font-awesome-icon :icon="locks.light2Color ? 'lock' : 'lock-open'" />
+          </button>
         </div>
         <div class="slider-container">
           <label class="slider-label">Ambient</label>
           <input type="range" min="0" max="1" step="0.01" v-model="ambientBrightness" @input="updateAmbientBrightness" class="slider">
           <span class="slider-value">{{ parseFloat(ambientBrightness).toFixed(2) }}</span>
           <input type="color" v-model="ambientColor" @input="updateAmbientColor" class="color-picker">
+          <button @click="locks.ambientColor = !locks.ambientColor" class="lock-button" :class="{ locked: locks.ambientColor }">
+            <font-awesome-icon :icon="locks.ambientColor ? 'lock' : 'lock-open'" />
+          </button>
         </div>
-        <button @click="randomizeLighting" class="btn-small">
-          Randomize angle <font-awesome-icon icon="lightbulb" />
-        </button>
+        <div class="slider-container">
+          <label class="slider-label">Angle θ</label>
+          <input type="range" min="0" max="360" step="5" v-model="lightTheta" @input="updateLightAngle" class="slider">
+          <span class="slider-value">{{ parseFloat(lightTheta).toFixed(0) }}°</span>
+          <button @click="locks.lightTheta = !locks.lightTheta" class="lock-button" :class="{ locked: locks.lightTheta }">
+            <font-awesome-icon :icon="locks.lightTheta ? 'lock' : 'lock-open'" />
+          </button>
+        </div>
+        <div class="slider-container">
+          <label class="slider-label">Angle φ</label>
+          <input type="range" min="0" max="180" step="5" v-model="lightPhi" @input="updateLightAngle" class="slider">
+          <span class="slider-value">{{ parseFloat(lightPhi).toFixed(0) }}°</span>
+          <button @click="locks.lightPhi = !locks.lightPhi" class="lock-button" :class="{ locked: locks.lightPhi }">
+            <font-awesome-icon :icon="locks.lightPhi ? 'lock' : 'lock-open'" />
+          </button>
+        </div>
       </div>
       <div class="panel-section">
         <div class="section-header">
           <label>Camera</label>
         </div>
+
+        <div class="slider-container">
+          <label class="slider-label">Angle θ</label>
+          <input type="range" min="0" max="360" step="5" v-model="cameraTheta" @input="updateCameraAngle" class="slider">
+          <span class="slider-value">{{ parseFloat(cameraTheta).toFixed(0) }}°</span>
+          <button @click="locks.cameraTheta = !locks.cameraTheta" class="lock-button" :class="{ locked: locks.cameraTheta }">
+            <font-awesome-icon :icon="locks.cameraTheta ? 'lock' : 'lock-open'" />
+          </button>
+        </div>
+        <div class="slider-container">
+          <label class="slider-label">Angle φ</label>
+          <input type="range" min="0" max="180" step="5" v-model="cameraPhi" @input="updateCameraAngle" class="slider">
+          <span class="slider-value">{{ parseFloat(cameraPhi).toFixed(0) }}°</span>
+          <button @click="locks.cameraPhi = !locks.cameraPhi" class="lock-button" :class="{ locked: locks.cameraPhi }">
+            <font-awesome-icon :icon="locks.cameraPhi ? 'lock' : 'lock-open'" />
+          </button>
+        </div>
         <div class="slider-container">
           <label class="slider-label">FOV</label>
           <input type="range" min="10" max="90" step="5" v-model="cameraFOV" @input="updateCameraFOV" class="slider">
           <span class="slider-value">{{ parseFloat(cameraFOV).toFixed(0) }}°</span>
+          <button @click="locks.cameraFOV = !locks.cameraFOV" class="lock-button" :class="{ locked: locks.cameraFOV }">
+            <font-awesome-icon :icon="locks.cameraFOV ? 'lock' : 'lock-open'" />
+          </button>
         </div>
       </div>
+
       <div class="panel-section">
-        <button @click="randomizeCamera" class="btn-small">
-          Randomize angle <font-awesome-icon icon="camera" />
+        <button @click="randomizeAll" class="btn-small master-randomize">
+          Randomize All <font-awesome-icon icon="dice" />
         </button>
       </div>
 
@@ -102,6 +145,7 @@
       :ambient-color="ambientColor"
       :ambient-brightness="parseFloat(ambientBrightness)"
       @model-loaded="onModelLoaded"
+      @camera-angle-changed="onCameraAngleChanged"
     />
   </div>
 </template>
@@ -121,6 +165,10 @@ export default {
       light2Brightness: 0.6,
       lightColor: '#ffffff',
       light2Color: colors.light2Color,
+      lightTheta: 45,
+      lightPhi: 45,
+      cameraTheta: 45,
+      cameraPhi: 45,
       ambientBrightness: 0.15,
       ambientColor: colors.ambientColor,
       cameraFOV: 45,
@@ -136,7 +184,18 @@ export default {
       thresholdPoints: [
         { value: 0.33 },
         { value: 0.66 }
-      ]
+      ],
+      // Lock states for parameters (true = locked, false = unlocked)
+      locks: {
+        lightColor: false,
+        light2Color: false,
+        lightTheta: false,
+        lightPhi: false,
+        cameraTheta: false,
+        cameraPhi: false,
+        cameraFOV: false,
+        ambientColor: false
+      }
     }
   },
   methods: {
@@ -184,14 +243,77 @@ export default {
       return { light2Color, ambientColor }
     },
     randomizeCamera() {
-      this.$refs.skullViewer.randomizeCamera()
+      // Generate random angles
+      this.cameraTheta = Math.random() * 360
+      this.cameraPhi = Math.random() * 180
+      this.$refs.skullViewer.setCameraAngle(this.cameraTheta, this.cameraPhi)
+    },
+    updateCameraAngle() {
+      this.$refs.skullViewer.setCameraAngle(this.cameraTheta, this.cameraPhi)
     },
     randomizeLighting() {
-      this.$refs.skullViewer.randomizeLighting()
+      // Generate random angles
+      this.lightTheta = Math.random() * 360
+      this.lightPhi = Math.random() * 180
+      this.$refs.skullViewer.setLightAngle(this.lightTheta, this.lightPhi)
     },
-    randomizeBoth() {
-      this.$refs.skullViewer.randomizeCamera()
-      this.$refs.skullViewer.randomizeLighting()
+    updateLightAngle() {
+      this.$refs.skullViewer.setLightAngle(this.lightTheta, this.lightPhi)
+    },
+    randomizeAll() {
+      // Generate random colors for lights
+      const colors = this.generateRandomColors()
+      
+      // Only randomize light colors, not intensities
+      if (!this.locks.lightColor) {
+        this.lightColor = '#ffffff'
+        this.updateLightColor()
+      }
+      
+      if (!this.locks.light2Color) {
+        this.light2Color = colors.light2Color
+        this.updateLight2Color()
+      }
+      
+      // Randomize light angles only if unlocked
+      if (!this.locks.lightTheta) {
+        this.lightTheta = Math.random() * 360
+      }
+      
+      if (!this.locks.lightPhi) {
+        this.lightPhi = Math.random() * 180
+      }
+      
+      // Update light angle if either was unlocked
+      if (!this.locks.lightTheta || !this.locks.lightPhi) {
+        this.updateLightAngle()
+      }
+      
+      // Randomize camera angles only if unlocked
+      if (!this.locks.cameraTheta) {
+        this.cameraTheta = Math.random() * 360
+      }
+      
+      if (!this.locks.cameraPhi) {
+        this.cameraPhi = Math.random() * 180
+      }
+      
+      // Update camera angle if either was unlocked
+      if (!this.locks.cameraTheta || !this.locks.cameraPhi) {
+        this.updateCameraAngle()
+      }
+      
+      // Randomize camera FOV only if unlocked
+      if (!this.locks.cameraFOV) {
+        this.cameraFOV = Math.floor(Math.random() * 80 + 10) // 10-90
+        this.updateCameraFOV()
+      }
+      
+      // Randomize ambient color only if unlocked
+      if (!this.locks.ambientColor) {
+        this.ambientColor = colors.ambientColor
+        this.updateAmbientColor()
+      }
     },
     updateLightBrightness() {
       this.$refs.skullViewer.setLightBrightness(this.lightBrightness)
@@ -261,6 +383,11 @@ export default {
       this.$refs.skullViewer.setBoundingBoxVisible(this.boundingBoxVisible)
       this.$refs.skullViewer.setBoundingGridVisible(this.boundingGridVisible)
     },
+    onCameraAngleChanged(angles) {
+      // Update sliders to reflect actual camera position
+      this.cameraTheta = Math.round(angles.theta)
+      this.cameraPhi = Math.round(angles.phi)
+    },
     adjustThresholds(changedIndex) {
       const value = parseFloat(this.thresholdPoints[changedIndex].value)
       
@@ -287,6 +414,8 @@ export default {
       this.updateLight2Brightness()
       this.updateLightColor()
       this.updateLight2Color()
+      this.updateLightAngle()
+      this.updateCameraAngle()
       this.updateAmbientBrightness()
       this.updateAmbientColor()
       this.updateCameraFOV()
@@ -447,6 +576,7 @@ export default {
 
 .btn-small {
   padding: 4px 8px;
+  margin: 1em 1em;
   background: #333;
   color: white;
   border: none;
@@ -457,6 +587,46 @@ export default {
 
 .btn-small:hover {
   background: #555;
+}
+
+.lock-button {
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #999;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  margin-left: 4px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.lock-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ccc;
+}
+
+.lock-button.locked {
+  background: rgba(255, 100, 100, 0.3);
+  color: #ff6666;
+}
+
+.lock-button.locked:hover {
+  background: rgba(255, 100, 100, 0.4);
+  color: #ff8888;
+}
+
+.master-randomize {
+  background: #444 !important;
+  font-weight: 600;
+  padding: 8px 16px !important;
+  margin: 0 auto !important;
+  display: block !important;
 }
 
 .btn-small .svg-inline--fa,

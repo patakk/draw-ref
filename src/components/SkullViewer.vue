@@ -231,6 +231,8 @@ export default {
         if (this.ditherPass) {
           this.ditherPass.uniforms.time.value += 0.1
         }
+        // Emit current camera angles to update UI sliders
+        this.emitCurrentCameraAngles()
       })
 
       this.ambientLight = new THREE.AmbientLight(parseInt(this.ambientColor.replace('#', ''), 16), this.ambientBrightness)
@@ -342,12 +344,53 @@ export default {
       this.camera.position.setFromSphericalCoords(currentDistance, phi, theta)
       this.camera.lookAt(0, 0, 0)
       this.controls.update()
+      
+      // Emit camera angle change to update UI sliders
+      const thetaDegrees = ((theta * 180) / Math.PI + 360) % 360
+      const phiDegrees = (phi * 180) / Math.PI
+      this.$emit('camera-angle-changed', {
+        theta: thetaDegrees,
+        phi: phiDegrees
+      })
+    },
+
+    setCameraAngle(thetaDegrees, phiDegrees) {
+      if (!this.camera) return
+      
+      // Convert degrees to radians
+      const theta = (thetaDegrees * Math.PI) / 180
+      const phi = (phiDegrees * Math.PI) / 180
+      
+      // Use current camera distance from origin
+      const currentDistance = this.camera.position.distanceTo(new THREE.Vector3(0, 0, 0))
+      
+      this.camera.position.setFromSphericalCoords(currentDistance, phi, theta)
+      this.camera.lookAt(0, 0, 0)
+      this.controls.update()
     },
 
     randomizeLighting() {
       if (this.directionalLight) {
         const theta = Math.random() * 2 * Math.PI
         const phi = Math.random() * Math.PI
+        const radius = 8
+        this.directionalLight.position.setFromSphericalCoords(radius, phi, theta)
+        
+        // Position light2 on opposite side
+        if (this.directionalLight2) {
+          const theta2 = theta + Math.PI  // Opposite angle
+          const phi2 = Math.PI - phi      // Opposite elevation
+          const radius2 = 8
+          this.directionalLight2.position.setFromSphericalCoords(radius2, phi2, theta2)
+        }
+      }
+    },
+
+    setLightAngle(thetaDegrees, phiDegrees) {
+      if (this.directionalLight) {
+        // Convert degrees to radians
+        const theta = (thetaDegrees * Math.PI) / 180
+        const phi = (phiDegrees * Math.PI) / 180
         const radius = 8
         this.directionalLight.position.setFromSphericalCoords(radius, phi, theta)
         
@@ -715,6 +758,26 @@ export default {
         const fovRadians = (this.camera.fov * Math.PI) / 180
         this.currentBaseCameraDistance = currentDistance * Math.tan(fovRadians / 2) / Math.tan((45 * Math.PI / 180) / 2)
       }
+    },
+
+    emitCurrentCameraAngles() {
+      if (!this.camera) return
+      
+      const position = this.camera.position
+      const distance = position.distanceTo(new THREE.Vector3(0, 0, 0))
+      
+      // Convert Cartesian to spherical coordinates
+      const theta = Math.atan2(position.x, position.z)
+      const phi = Math.acos(position.y / distance)
+      
+      // Convert to degrees and normalize
+      const thetaDegrees = ((theta * 180) / Math.PI + 360) % 360
+      const phiDegrees = (phi * 180) / Math.PI
+      
+      this.$emit('camera-angle-changed', {
+        theta: thetaDegrees,
+        phi: phiDegrees
+      })
     }
   }
 }
