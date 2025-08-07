@@ -1,5 +1,10 @@
 <template>
-  <canvas ref="canvas"></canvas>
+  <div class="viewer-container">
+    <canvas ref="canvas"></canvas>
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -27,7 +32,8 @@ export default {
   data() {
     return {
       isInitialized: false,
-      currentBaseCameraDistance: this.baseCameraDistance
+      currentBaseCameraDistance: this.baseCameraDistance,
+      isLoading: false
     }
   },
   created() {
@@ -257,6 +263,9 @@ export default {
     },
 
     loadModel(modelPath) {
+      // Show loading animation
+      this.isLoading = true
+      
       // Remove existing skull and bounding box
       if (this.skull) {
         this.scene.remove(this.skull)
@@ -309,11 +318,15 @@ export default {
         this.$nextTick(() => {
           // Trigger parent component to reapply the current checkbox states
           this.$emit('model-loaded')
+          // Hide loading animation
+          this.isLoading = false
         })
         
         this.scene.add(this.skull)
       }, undefined, (error) => {
         console.error('Error loading model:', error);
+        // Hide loading animation on error too
+        this.isLoading = false
       })
     },
 
@@ -708,9 +721,42 @@ export default {
 </script>
 
 <style scoped>
+.viewer-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>
