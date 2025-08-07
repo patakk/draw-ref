@@ -180,7 +180,7 @@ export default {
       boundingGridVisible: false,
       panelCollapsed: false,
       selectedModel: 'asaro_low.glb',
-      availableModels: ['asaro_low.glb', 'asaro_high.glb', 'skull.glb', 'head.glb'],
+      availableModels: ['asaro_low.glb', 'asaro_high.glb', 'skull.glb'],
       thresholdPoints: [
         { value: 0.33 },
         { value: 0.66 }
