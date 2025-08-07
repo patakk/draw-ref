@@ -782,7 +782,7 @@ export default {
   bottom: 1em;
   left: 1em;
   z-index: 100;
-  opacity: .7;
+  opacity: .4;
 }
 
 .kofi-link:hover {
