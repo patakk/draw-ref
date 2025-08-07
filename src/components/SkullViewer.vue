@@ -126,11 +126,17 @@ export default {
       const initialBgValue = initialAmbient * this.ambientMaster
       this.scene.background = new THREE.Color(initialBgValue, initialBgValue, initialBgValue)
 
+      // Create camera with optimized near/far planes for better z-buffer precision
+      const fov = 45
+      const fovFactor = fov / 45.0
+      const near = Math.max(0.01, 0.1 * fovFactor)
+      const far = Math.min(1000, 100 / fovFactor)
+      
       this.camera = new THREE.PerspectiveCamera(
-        45,
+        fov,
         window.innerWidth / window.innerHeight,
-        0.01,
-        10000
+        near,
+        far
       )
       this.camera.position.set(1*.6, 0.5*.6, 1*.6)
 
@@ -429,10 +435,14 @@ export default {
     },
 
     onWindowResize() {
-      this.camera.aspect = window.innerWidth / window.innerHeight
-      this.camera.updateProjectionMatrix()
-      this.renderer.setPixelRatio(window.devicePixelRatio)
-      this.renderer.setSize(window.innerWidth, window.innerHeight)
+      if (this.camera) {
+        this.camera.aspect = window.innerWidth / window.innerHeight
+        this.camera.updateProjectionMatrix()
+      }
+      if (this.renderer) {
+        this.renderer.setPixelRatio(window.devicePixelRatio)
+        this.renderer.setSize(window.innerWidth, window.innerHeight)
+      }
       if (this.composer) {
         this.composer.setSize(window.innerWidth, window.innerHeight)
       }
@@ -565,6 +575,13 @@ export default {
         const compensatedDistance = this.currentBaseCameraDistance / Math.tan(fovRadians / 2) * Math.tan((45 * Math.PI / 180) / 2)
         
         this.camera.fov = fovValue
+        
+        // Adjust near/far planes based on FOV to prevent z-fighting
+        // Narrower FOV needs tighter near/far ratio for better depth precision
+        const fovFactor = fovValue / 45.0 // Normalize to default FOV
+        this.camera.near = Math.max(0.01, 0.1 * fovFactor)
+        this.camera.far = Math.min(1000, 100 / fovFactor)
+        
         this.camera.updateProjectionMatrix()
         
         // Maintain current camera direction but adjust distance based on FOV
