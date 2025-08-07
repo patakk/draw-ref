@@ -21,13 +21,13 @@
           <label>Lighting</label>
         </div>
         <div class="slider-container">
-          <label class="slider-label">Light 1</label>
+          <label class="slider-label">Key</label>
           <input type="range" min="0.1" max="2" step="0.1" v-model="lightBrightness" @input="updateLightBrightness" class="slider">
           <span>{{ parseFloat(lightBrightness).toFixed(1) }}</span>
           <input type="color" v-model="lightColor" @input="updateLightColor" class="color-picker">
         </div>
         <div class="slider-container">
-          <label class="slider-label">Light 2</label>
+          <label class="slider-label">Fill</label>
           <input type="range" min="0" max="2" step="0.1" v-model="light2Brightness" @input="updateLight2Brightness" class="slider">
           <span>{{ parseFloat(light2Brightness).toFixed(1) }}</span>
           <input type="color" v-model="light2Color" @input="updateLight2Color" class="color-picker">
@@ -38,6 +38,9 @@
           <span>{{ parseFloat(ambientBrightness).toFixed(2) }}</span>
           <input type="color" v-model="ambientColor" @input="updateAmbientColor" class="color-picker">
         </div>
+        <button @click="randomizeLighting" class="btn-small">
+          Randomize angle <font-awesome-icon icon="lightbulb" />
+        </button>
       </div>
       <div class="panel-section">
         <div class="section-header">
@@ -50,28 +53,19 @@
         </div>
       </div>
       <div class="panel-section">
-
-        <button @click="randomizeLighting" class="btn-small">
-          <font-awesome-icon icon="lightbulb" /> Randomize Light
-        </button>
         <button @click="randomizeCamera" class="btn-small">
-          <font-awesome-icon icon="camera" /> Randomize Camera
-        </button>
-        <button @click="randomizeBoth" class="btn btn-primary full-width">
-          <font-awesome-icon icon="shuffle" /> Randomize Both
+          Randomize angle <font-awesome-icon icon="camera" />
         </button>
       </div>
 
-      <div class="panel-section">
+      <div class="panel-section panel-divider">
         <div class="checkbox-container">
           <input type="checkbox" id="bbox-checkbox" v-model="boundingBoxVisible" @change="updateBoundingBox" class="checkbox">
           <label for="bbox-checkbox">Bounding Box</label>
         </div>
-      </div>
-      <div class="panel-section">
-        <div class="checkbox-container">
-          <input type="checkbox" id="postprocessing-checkbox" v-model="postProcessingEnabled" @change="updatePostProcessing" class="checkbox">
-          <label for="postprocessing-checkbox">Post Processing</label>
+        <div v-if="boundingBoxVisible" class="checkbox-container">
+          <input type="checkbox" id="grid-checkbox" v-model="boundingGridVisible" @change="updateBoundingGrid" class="checkbox">
+          <label for="grid-checkbox">Grid Lines</label>
         </div>
       </div>
       <div class="panel-section">
@@ -103,6 +97,11 @@
       :base-camera-distance="baseCameraDistance"
       :ambient-master="ambientMaster" 
       :directional-master="directionalMaster"
+      :light-color="lightColor"
+      :light2-color="light2Color"
+      :ambient-color="ambientColor"
+      :ambient-brightness="parseFloat(ambientBrightness)"
+      @model-loaded="onModelLoaded"
     />
   </div>
 </template>
@@ -116,20 +115,21 @@ export default {
     SkullViewer
   },
   data() {
+    const colors = this.generateRandomColors()
     return {
       lightBrightness: 1.,
       light2Brightness: 0.6,
       lightColor: '#ffffff',
-      light2Color: '#ff8844',
+      light2Color: colors.light2Color,
       ambientBrightness: 0.15,
-      ambientColor: '#ffffff',
+      ambientColor: colors.ambientColor,
       cameraFOV: 45,
       baseCameraDistance: 0.8,
       ambientMaster: .27,
-      directionalMaster: 3.0,
+      directionalMaster: 1.7,
       thresholdEnabled: false,
       boundingBoxVisible: false,
-      postProcessingEnabled: true,
+      boundingGridVisible: false,
       panelCollapsed: false,
       selectedModel: 'asaro_low.glb',
       availableModels: ['asaro_low.glb', 'asaro_high.glb', 'skull.glb', 'head.glb'],
@@ -140,6 +140,49 @@ export default {
     }
   },
   methods: {
+    generateRandomColors() {
+      // Generate random hue (0-360), 80% saturation, 80% brightness
+      const baseHue = Math.random() * 360
+      const saturation = 80
+      const lightness = 80
+      
+      // Helper function to convert HSL to hex
+      const hslToHex = (h, s, l) => {
+        const c = (1 - Math.abs(2 * l / 100 - 1)) * s / 100
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+        const m = l / 100 - c / 2
+        
+        let r, g, b
+        if (h >= 0 && h < 60) {
+          r = c; g = x; b = 0
+        } else if (h >= 60 && h < 120) {
+          r = x; g = c; b = 0
+        } else if (h >= 120 && h < 180) {
+          r = 0; g = c; b = x
+        } else if (h >= 180 && h < 240) {
+          r = 0; g = x; b = c
+        } else if (h >= 240 && h < 300) {
+          r = x; g = 0; b = c
+        } else {
+          r = c; g = 0; b = x
+        }
+        
+        r = Math.round((r + m) * 255)
+        g = Math.round((g + m) * 255)
+        b = Math.round((b + m) * 255)
+        
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+      }
+      
+      // Generate light2 color with base hue
+      const light2Color = hslToHex(baseHue, saturation, lightness)
+      
+      // Generate ambient color with hue shifted by 10% (36 degrees)
+      const ambientHue = (baseHue + 36) % 360
+      const ambientColor = hslToHex(ambientHue, saturation, lightness)
+      
+      return { light2Color, ambientColor }
+    },
     randomizeCamera() {
       this.$refs.skullViewer.randomizeCamera()
     },
@@ -174,8 +217,9 @@ export default {
     updateThreshold() {
       // Auto-disable post processing when threshold is enabled
       if (this.thresholdEnabled) {
-        //this.postProcessingEnabled = false
-        //this.$refs.skullViewer.setPostProcessing(false)
+        this.$refs.skullViewer.setPostProcessing(false)
+      } else {
+        this.$refs.skullViewer.setPostProcessing(true)
       }
       this.$refs.skullViewer.setThreshold(this.thresholdEnabled, this.thresholdPoints)
     },
@@ -200,12 +244,22 @@ export default {
     },
     updateBoundingBox() {
       this.$refs.skullViewer.setBoundingBoxVisible(this.boundingBoxVisible)
+      // Reset grid visibility when bounding box is turned off
+      if (!this.boundingBoxVisible) {
+        this.boundingGridVisible = false
+        this.$refs.skullViewer.setBoundingGridVisible(false)
+      }
+    },
+    updateBoundingGrid() {
+      this.$refs.skullViewer.setBoundingGridVisible(this.boundingGridVisible)
     },
     updateModel() {
       this.$refs.skullViewer.loadModel(this.selectedModel)
     },
-    updatePostProcessing() {
-      this.$refs.skullViewer.setPostProcessing(this.postProcessingEnabled)
+    onModelLoaded() {
+      // Reapply current checkbox states after model loads
+      this.$refs.skullViewer.setBoundingBoxVisible(this.boundingBoxVisible)
+      this.$refs.skullViewer.setBoundingGridVisible(this.boundingGridVisible)
     },
     adjustThresholds(changedIndex) {
       const value = parseFloat(this.thresholdPoints[changedIndex].value)
@@ -237,7 +291,7 @@ export default {
       this.updateAmbientColor()
       this.updateCameraFOV()
       this.updateThreshold()
-      this.updatePostProcessing()
+      this.$refs.skullViewer.setPostProcessing(true)
     })
   }
 }
@@ -283,7 +337,7 @@ export default {
   padding: 0;
   margin: 0;
   border: none; /* Remove default border */
-  border-radius: 4px; /* Optional: add slight rounding */
+  border-radius: 2px; /* Optional: add slight rounding */
   box-shadow: none; /* Remove any shadow */
   -webkit-appearance: none; /* Remove default styling on some browsers */
 }
@@ -305,15 +359,23 @@ export default {
   background: rgba(15, 15, 15, 0.95);
   padding: 20px;
   padding-top: 40px; /* Make room for the toggle button */
-  border-radius: 12px;
+  border-radius: 2px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #e0e0e0;
   font-size: 13px;
   font-family: 'Monaco', 'Menlo', monospace;
   min-width: 280px;
-  max-height: 70vh;
+  max-height: 90vh;
   overflow-y: auto;
   backdrop-filter: blur(10px);
+  
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.effects-panel::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
 }
 
 .panel-section {
@@ -321,6 +383,11 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.panel-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 15px;
 }
 
 .panel-section label {
@@ -413,7 +480,7 @@ export default {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #007acc;
+  background: #000000;
   cursor: pointer;
   border: 2px solid #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -423,7 +490,7 @@ export default {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #007acc;
+  background: #000000;
   cursor: pointer;
   border: 2px solid #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -445,7 +512,7 @@ export default {
 .checkbox {
   width: 16px;
   height: 16px;
-  accent-color: #007acc;
+  accent-color: #000000;
   cursor: pointer;
 }
 
@@ -471,6 +538,7 @@ export default {
 .slider-label {
   font-size: 11px;
   color: #999;
+  opacity: .4;
   min-width: 70px;
   font-weight: normal;
   text-transform: none;
@@ -483,7 +551,7 @@ export default {
 
 .panel-section span {
   font-size: 11px;
-  color: #007acc;
+  color: #000000;
   font-weight: 600;
   min-width: 40px;
   text-align: right;
@@ -535,14 +603,38 @@ export default {
 
 .kofi-link {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 1em;
+  left: 1em;
   z-index: 100;
+  opacity: .7;
+}
+
+.kofi-link:hover {
+  opacity: 1;
 }
 
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+}
+
+/* Mobile and tablet styles */
+@media (max-width: 1024px) {
+  .effects-panel {
+    background: rgba(15, 15, 15, 0.1) !important;
+    backdrop-filter: blur(3px) !important;
+    left: 20px !important;
+    right: 20px !important;
+    top: 20px !important;
+    min-width: auto !important;
+    width: calc(100vw - 40px) !important;
+    box-sizing: border-box !important;
+  }
+
+  .always-visible-toggle {
+    right: 2em;
+    top: 2em;
+  }
 }
 </style>

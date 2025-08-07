@@ -18,7 +18,11 @@ export default {
   props: {
     baseCameraDistance: { type: Number, default: 0.8 },
     ambientMaster: { type: Number, default: 1.6 },
-    directionalMaster: { type: Number, default: 3.0 }
+    directionalMaster: { type: Number, default: 3.0 },
+    lightColor: { type: String, default: '#ffffff' },
+    light2Color: { type: String, default: '#ff8844' },
+    ambientColor: { type: String, default: '#ffffff' },
+    ambientBrightness: { type: Number, default: 0.15 }
   },
   data() {
     return {
@@ -36,6 +40,7 @@ export default {
     this.ambientLight = null
     this.skull = null
     this.boundingBoxHelper = null
+    this.boundingGrid = null
     this.animationId = null
     this.composer = null
     this.thresholdPass = null
@@ -45,7 +50,7 @@ export default {
     this.bloomPass = null
     this.ditherPass = null
     this.postProcessingEnabled = true
-    // Shaders will be loaded dynamically
+    // Shaders will be loaded dynamically from external files
     this.thresholdShader = {
       uniforms: {
         'tDiffuse': { value: null },
@@ -53,14 +58,65 @@ export default {
         'thresholdCount': { value: 0 },
         'enabled': { value: false }
       },
-      vertexShader: `
+      vertexShader: '',
+      fragmentShader: ''
+    }
+    this.ditherShader = {
+      uniforms: {
+        'tDiffuse': { value: null },
+        'time': { value: 0.0 }
+      },
+      vertexShader: '',
+      fragmentShader: ''
+    }
+  },
+  async mounted() {
+    await this.loadShaders()
+    this.init()
+    this.loadSkull()
+    this.startAnimation()
+    window.addEventListener('resize', this.onWindowResize)
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.onWindowResize)
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId)
+    }
+  },
+  methods: {
+    async loadShaders() {
+      try {
+        // Load threshold shaders
+        const thresholdVertResponse = await fetch('/src/shaders/threshold.vert')
+        const thresholdFragResponse = await fetch('/src/shaders/threshold.frag')
+        
+        this.thresholdShader.vertexShader = await thresholdVertResponse.text()
+        this.thresholdShader.fragmentShader = await thresholdFragResponse.text()
+        
+        // Load dither shaders
+        const ditherVertResponse = await fetch('/src/shaders/dither.vert')
+        const ditherFragResponse = await fetch('/src/shaders/dither.frag')
+        
+        this.ditherShader.vertexShader = await ditherVertResponse.text()
+        this.ditherShader.fragmentShader = await ditherFragResponse.text()
+        
+      } catch (error) {
+        console.error('Error loading shaders:', error)
+        // Fall back to inline shaders if loading fails
+        this.loadInlineShaders()
+      }
+    },
+
+    loadInlineShaders() {
+      // Fallback inline shaders
+      this.thresholdShader.vertexShader = `
         varying vec2 vUv;
         void main() {
           vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
-      `,
-      fragmentShader: `
+      `
+      this.thresholdShader.fragmentShader = `
         uniform sampler2D tDiffuse;
         uniform float thresholds[10];
         uniform int thresholdCount;
@@ -99,20 +155,15 @@ export default {
           gl_FragColor = vec4(outputColor, color.a);
         }
       `
-    }
-    this.ditherShader = {
-      uniforms: {
-        'tDiffuse': { value: null },
-        'time': { value: 0.0 }
-      },
-      vertexShader: `
+      
+      this.ditherShader.vertexShader = `
         varying vec2 vUv;
         void main() {
           vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
-      `,
-      fragmentShader: `
+      `
+      this.ditherShader.fragmentShader = `
         uniform sampler2D tDiffuse;
         uniform float time;
         varying vec2 vUv;
@@ -126,30 +177,11 @@ export default {
           vec4 color = texture2D(tDiffuse, vUv);
           
           // Add slight dithering noise
-          float noise = rand(vUv) * 0.05 - 0.025;
+          float noise = rand(vUv) * 0.1 - 0.1/2.;
           
           gl_FragColor = vec4(color.rgb + vec3(noise), color.a);
         }
       `
-    }
-  },
-  async mounted() {
-    await this.loadShaders()
-    this.init()
-    this.loadSkull()
-    this.startAnimation()
-    window.addEventListener('resize', this.onWindowResize)
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.onWindowResize)
-    if (this.animationId) {
-      cancelAnimationFrame(this.animationId)
-    }
-  },
-  methods: {
-    async loadShaders() {
-      // No need to load external shaders since they're defined inline
-      return Promise.resolve();
     },
 
     init() {
@@ -198,10 +230,11 @@ export default {
         }
       })
 
-      this.ambientLight = new THREE.AmbientLight(0xffffff, 0.15)
+      this.ambientLight = new THREE.AmbientLight(parseInt(this.ambientColor.replace('#', ''), 16), this.ambientBrightness)
       this.scene.add(this.ambientLight)
+      this.updateBackgroundColor()
 
-      this.directionalLight = new THREE.DirectionalLight(0xffffff, this.directionalMaster)
+      this.directionalLight = new THREE.DirectionalLight(parseInt(this.lightColor.replace('#', ''), 16), this.directionalMaster)
       this.directionalLight.position.set(5, 5, 5)
       this.directionalLight.castShadow = true
       this.directionalLight.shadow.mapSize.width = 4096
@@ -212,7 +245,7 @@ export default {
       this.directionalLight.shadow.blurSamples = 30
       this.scene.add(this.directionalLight)
 
-      this.directionalLight2 = new THREE.DirectionalLight(0xff8844, this.directionalMaster * 0.6)
+      this.directionalLight2 = new THREE.DirectionalLight(parseInt(this.light2Color.replace('#', ''), 16), this.directionalMaster * 0.6)
       this.directionalLight2.position.set(-3, 2, -4)
       this.directionalLight2.castShadow = false
       this.scene.add(this.directionalLight2)
@@ -236,6 +269,10 @@ export default {
         this.scene.remove(this.boundingBoxHelper)
         this.boundingBoxHelper = null
       }
+      if (this.boundingGrid) {
+        this.scene.remove(this.boundingGrid)
+        this.boundingGrid = null
+      }
 
       const loader = new GLTFLoader()
       const baseUrl = import.meta.env.BASE_URL || './';
@@ -249,7 +286,7 @@ export default {
             
             // Replace with physical bone material
             const boneMaterial = new THREE.MeshStandardMaterial({
-              color: 0xf5f5dc,      // Bone color (beige)
+              color: 0xffffff,      // Bone color (beige)
               roughness: 0.8,       // Matte finish
               metalness: 0.0,       // Not metallic
               flatShading: false,   // Smooth shading
@@ -260,11 +297,22 @@ export default {
           }
         })
         
-        // Create bounding box helper
+        // Create bounding box helper and spatial grid
         const box = new THREE.Box3().setFromObject(this.skull)
         this.boundingBoxHelper = new THREE.Box3Helper(box, 0xffffff)
         this.boundingBoxHelper.visible = false
         this.scene.add(this.boundingBoxHelper)
+        
+        // Create spatial grid subdivisions
+        this.boundingGrid = this.createBoundingGrid(box)
+        this.boundingGrid.visible = false
+        this.scene.add(this.boundingGrid)
+        
+        // Restore visibility state from parent component
+        this.$nextTick(() => {
+          // Trigger parent component to reapply the current checkbox states
+          this.$emit('model-loaded')
+        })
         
         this.scene.add(this.skull)
       }, undefined, (error) => {
@@ -331,6 +379,9 @@ export default {
       if (this.composer) {
         this.composer.setSize(window.innerWidth, window.innerHeight)
       }
+      if (this.fxaaPass) {
+        this.fxaaPass.uniforms['resolution'].value.set(1/window.innerWidth, 1/window.innerHeight)
+      }
       if (this.smaaPass) {
         this.smaaPass.setSize(window.innerWidth, window.innerHeight)
       }
@@ -356,16 +407,23 @@ export default {
       this.renderPass = new RenderPass(this.scene, this.camera)
       this.composer.addPass(this.renderPass)
       
+      // Add FXAA pass for antialiasing
+      this.fxaaPass = new ShaderPass(FXAAShader)
+      this.fxaaPass.uniforms['resolution'].value.set(1/window.innerWidth, 1/window.innerHeight)
+      this.fxaaPass.enabled = this.postProcessingEnabled
+      this.composer.addPass(this.fxaaPass)
+      
       // Use SMAA for better antialiasing (higher quality than FXAA)
       this.smaaPass = new SMAAPass(window.innerWidth, window.innerHeight)
+      this.smaaPass.enabled = this.postProcessingEnabled
       this.composer.addPass(this.smaaPass)
       
       // Add bloom effect
       this.bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        .12,  // strength
+        .3,  // strength
         0.8,  // radius
-        0.05  // threshold
+        0.005  // threshold
       )
       this.bloomPass.enabled = this.postProcessingEnabled
       this.composer.addPass(this.bloomPass)
@@ -406,6 +464,16 @@ export default {
     setLight2Color(color) {
       if (this.directionalLight2) {
         this.directionalLight2.color.setHex(parseInt(color.replace('#', ''), 16))
+      }
+      this.updateGridColor(color)
+    },
+
+    updateGridColor(lightColor) {
+      if (this.boundingGrid) {
+        const oppositeColor = this.getOppositeHueColor(lightColor)
+        this.boundingGrid.children.forEach(line => {
+          line.material.color.setHex(oppositeColor)
+        })
       }
     },
 
@@ -471,14 +539,163 @@ export default {
       }
     },
 
+    setBoundingGridVisible(visible) {
+      if (this.boundingGrid) {
+        this.boundingGrid.visible = visible
+      }
+    },
+
     setPostProcessing(enabled) {
       this.postProcessingEnabled = enabled
+      if (this.fxaaPass) {
+        this.fxaaPass.enabled = true
+      }
+      if (this.smaaPass) {
+        this.smaaPass.enabled = true
+      }
       if (this.bloomPass) {
         this.bloomPass.enabled = enabled
       }
       if (this.ditherPass) {
         this.ditherPass.enabled = enabled
       }
+    },
+
+    getOppositeHueColor(hexColor) {
+      // Convert hex to RGB
+      const r = parseInt(hexColor.substring(1, 3), 16) / 255
+      const g = parseInt(hexColor.substring(3, 5), 16) / 255
+      const b = parseInt(hexColor.substring(5, 7), 16) / 255
+      
+      // Convert RGB to HSL
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      const diff = max - min
+      
+      let h = 0
+      if (diff !== 0) {
+        if (max === r) h = ((g - b) / diff) % 6
+        else if (max === g) h = (b - r) / diff + 2
+        else h = (r - g) / diff + 4
+      }
+      h = h * 60
+      if (h < 0) h += 360
+      
+      // Get opposite hue (add 180 degrees)
+      const oppositeH = (h + 180) % 360
+      
+      // Keep same saturation and lightness, just change hue
+      let s = max === 0 ? 0 : diff / max
+      let l = (max + min) / 2
+
+      s = s * .85;
+      
+      l = Math.pow(l, .5) // Adjust lightness for better contrast
+      // Convert HSL back to RGB
+      const c = (1 - Math.abs(2 * l - 1)) * s
+      const x = c * (1 - Math.abs((oppositeH / 60) % 2 - 1))
+      const m = l - c / 2
+      
+      let rNew, gNew, bNew
+      if (oppositeH < 60) { rNew = c; gNew = x; bNew = 0 }
+      else if (oppositeH < 120) { rNew = x; gNew = c; bNew = 0 }
+      else if (oppositeH < 180) { rNew = 0; gNew = c; bNew = x }
+      else if (oppositeH < 240) { rNew = 0; gNew = x; bNew = c }
+      else if (oppositeH < 300) { rNew = x; gNew = 0; bNew = c }
+      else { rNew = c; gNew = 0; bNew = x }
+      
+      rNew = Math.round((rNew + m) * 255)
+      gNew = Math.round((gNew + m) * 255)
+      bNew = Math.round((bNew + m) * 255)
+      
+      return (rNew << 16) | (gNew << 8) | bNew
+    },
+
+    createBoundingGrid(box) {
+      const group = new THREE.Group()
+      const oppositeColor = this.getOppositeHueColor(this.light2Color)
+      
+      // Material for internal lines (higher opacity)
+      const internalMaterial = new THREE.LineBasicMaterial({ 
+        color: oppositeColor, 
+        transparent: true,
+        opacity: 0.99,
+      })
+      
+      // Material for edge lines (lower opacity)
+      const edgeMaterial = new THREE.LineBasicMaterial({ 
+        color: oppositeColor, 
+        transparent: true,
+        opacity: 0.4,
+      })
+      
+      const min = box.min
+      const max = box.max
+      const size = box.getSize(new THREE.Vector3())
+      
+      const divisions = 3 // Creates 4 sections (3 dividing lines plus edges)
+      
+      // X-direction lines (left to right) at different Y and Z positions
+      for (let i = 0; i <= divisions; i++) {
+        for (let j = 0; j <= divisions; j++) {
+          const y = min.y + (size.y * i / divisions)
+          const z = min.z + (size.z * j / divisions)
+          
+          const geometry = new THREE.BufferGeometry()
+          const vertices = new Float32Array([
+            min.x, y, z,
+            max.x, y, z
+          ])
+          geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+          
+          // Use edge material for edge lines, internal material for internal lines
+          const material = (i === 0 || i === divisions || j === 0 || j === divisions) ? edgeMaterial : internalMaterial
+          const line = new THREE.Line(geometry, material)
+          group.add(line)
+        }
+      }
+      
+      // Y-direction lines (bottom to top) at different X and Z positions  
+      for (let i = 0; i <= divisions; i++) {
+        for (let j = 0; j <= divisions; j++) {
+          const x = min.x + (size.x * i / divisions)
+          const z = min.z + (size.z * j / divisions)
+          
+          const geometry = new THREE.BufferGeometry()
+          const vertices = new Float32Array([
+            x, min.y, z,
+            x, max.y, z
+          ])
+          geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+          
+          // Use edge material for edge lines, internal material for internal lines
+          const material = (i === 0 || i === divisions || j === 0 || j === divisions) ? edgeMaterial : internalMaterial
+          const line = new THREE.Line(geometry, material)
+          group.add(line)
+        }
+      }
+      
+      // Z-direction lines (front to back) at different X and Y positions
+      for (let i = 0; i <= divisions; i++) {
+        for (let j = 0; j <= divisions; j++) {
+          const x = min.x + (size.x * i / divisions)
+          const y = min.y + (size.y * j / divisions)
+          
+          const geometry = new THREE.BufferGeometry()
+          const vertices = new Float32Array([
+            x, y, min.z,
+            x, y, max.z
+          ])
+          geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+          
+          // Use edge material for edge lines, internal material for internal lines
+          const material = (i === 0 || i === divisions || j === 0 || j === divisions) ? edgeMaterial : internalMaterial
+          const line = new THREE.Line(geometry, material)
+          group.add(line)
+        }
+      }
+      
+      return group
     },
 
     updateBaseCameraDistance() {
