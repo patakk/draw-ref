@@ -1,2 +1,4 @@
 public/skull.glb filter=lfs diff=lfs merge=lfs -text
 public/head.glb filter=lfs diff=lfs merge=lfs -text
+public/asaro_low.glb filter=lfs diff=lfs merge=lfs -text
+public/asaro_high.glb filter=lfs diff=lfs merge=lfs -text
