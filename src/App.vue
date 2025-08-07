@@ -435,6 +435,8 @@ export default {
   padding: 0;
   position: relative;
   background: #000;
+  /* Prevent double-tap zoom on the entire app */
+  touch-action: manipulation;
 }
 
 .controls {
@@ -791,6 +793,16 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  /* Disable double-tap zoom and text selection */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  /* Disable touch callouts on iOS */
+  -webkit-touch-callout: none;
+  /* Disable highlight on tap */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Mobile and tablet styles */

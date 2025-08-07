@@ -794,6 +794,13 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
+  /* Prevent double-tap zoom and enable precise touch control */
+  touch-action: manipulation;
+  /* Disable text selection */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .loading-overlay {
