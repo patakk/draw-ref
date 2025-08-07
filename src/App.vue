@@ -629,7 +629,7 @@ export default {
 
 .master-randomize {
   background: #444 !important;
-  font-weight: 600;
+  font-weight: 400;
   padding: 8px 16px !important;
   margin: 0 auto !important;
   display: block !important;
