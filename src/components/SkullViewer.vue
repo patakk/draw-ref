@@ -56,6 +56,10 @@ export default {
     this.bloomPass = null
     this.ditherPass = null
     this.postProcessingEnabled = true
+    
+    // Preloaded models cache
+    this.preloadedModels = new Map()
+    this.preloadingPromises = new Map()
     // Shaders will be loaded dynamically from external files
     this.thresholdShader = {
       uniforms: {
@@ -82,6 +86,9 @@ export default {
     this.loadSkull()
     this.startAnimation()
     window.addEventListener('resize', this.onWindowResize)
+    
+    // Start preloading the heavy skull model immediately
+    this.preloadModel('skull.glb')
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onWindowResize)
@@ -105,87 +112,11 @@ export default {
         
       } catch (error) {
         console.error('Error loading shaders:', error)
-        // Fall back to inline shaders if loading fails
-        this.loadInlineShaders()
+        // No fallback - shaders are required to be in src/shaders/
+        throw error
       }
     },
 
-    loadInlineShaders() {
-      // Fallback inline shaders
-      this.thresholdShader.vertexShader = `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `
-      this.thresholdShader.fragmentShader = `
-        uniform sampler2D tDiffuse;
-        uniform float thresholds[10];
-        uniform int thresholdCount;
-        uniform bool enabled;
-        varying vec2 vUv;
-        
-        void main() {
-          vec4 color = texture2D(tDiffuse, vUv);
-          
-          if (!enabled) {
-            gl_FragColor = color;
-            return;
-          }
-          
-          float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-          
-          // Initialize with black
-          vec3 outputColor = vec3(0.0);
-          
-          // Find which band the luminance falls into
-          for (int i = 0; i < 10; i++) {
-            if (i >= thresholdCount) break;
-            
-            if (luminance <= thresholds[i]) {
-              float intensity = float(i) / float(thresholdCount + 1);
-              outputColor = vec3(intensity);
-              break;
-            }
-          }
-          
-          // If luminance is above all thresholds, use white
-          if (luminance > thresholds[thresholdCount-1]) {
-            outputColor = vec3(1.0);
-          }
-          
-          gl_FragColor = vec4(outputColor, color.a);
-        }
-      `
-      
-      this.ditherShader.vertexShader = `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `
-      this.ditherShader.fragmentShader = `
-        uniform sampler2D tDiffuse;
-        uniform float time;
-        varying vec2 vUv;
-        
-        // Pseudo-random function
-        float rand(vec2 co) {
-          return fract(sin(dot(co.xy, vec2(12.9898, 78.233)) + time * 0.1) * 43758.5453);
-        }
-        
-        void main() {
-          vec4 color = texture2D(tDiffuse, vUv);
-          
-          // Add slight dithering noise
-          float noise = rand(vUv) * 0.1 - 0.1/2.;
-          
-          gl_FragColor = vec4(color.rgb + vec3(noise), color.a);
-        }
-      `
-    },
 
     init() {
       this.scene = new THREE.Scene()
@@ -264,6 +195,43 @@ export default {
       this.loadModel('asaro_low.glb')
     },
 
+    preloadModel(modelPath) {
+      // Return existing promise if already preloading
+      if (this.preloadingPromises.has(modelPath)) {
+        return this.preloadingPromises.get(modelPath)
+      }
+
+      // Return resolved promise if already preloaded
+      if (this.preloadedModels.has(modelPath)) {
+        return Promise.resolve(this.preloadedModels.get(modelPath))
+      }
+
+      const loader = new GLTFLoader()
+      const baseUrl = import.meta.env.BASE_URL || './'
+      const modelUrl = `${baseUrl}${modelPath}`
+      
+      const preloadPromise = new Promise((resolve, reject) => {
+        loader.load(
+          modelUrl,
+          (gltf) => {
+            this.preloadedModels.set(modelPath, gltf)
+            this.preloadingPromises.delete(modelPath)
+            console.log(`Preloaded model: ${modelPath}`)
+            resolve(gltf)
+          },
+          undefined,
+          (error) => {
+            this.preloadingPromises.delete(modelPath)
+            console.error(`Error preloading model ${modelPath}:`, error)
+            reject(error)
+          }
+        )
+      })
+      
+      this.preloadingPromises.set(modelPath, preloadPromise)
+      return preloadPromise
+    },
+
     loadModel(modelPath) {
       // Show loading animation
       this.isLoading = true
@@ -282,54 +250,79 @@ export default {
         this.boundingGrid = null
       }
 
+      // Check if model is already preloaded
+      if (this.preloadedModels.has(modelPath)) {
+        const gltf = this.preloadedModels.get(modelPath)
+        this.processLoadedModel(gltf.scene.clone())
+        return
+      }
+
+      // Check if model is currently preloading
+      if (this.preloadingPromises.has(modelPath)) {
+        this.preloadingPromises.get(modelPath)
+          .then((gltf) => {
+            this.processLoadedModel(gltf.scene.clone())
+          })
+          .catch((error) => {
+            console.error('Error loading preloaded model:', error)
+            this.isLoading = false
+          })
+        return
+      }
+
+      // Load model normally (not preloaded)
       const loader = new GLTFLoader()
-      const baseUrl = import.meta.env.BASE_URL || './';
-      const modelUrl = `${baseUrl}${modelPath}`;
+      const baseUrl = import.meta.env.BASE_URL || './'
+      const modelUrl = `${baseUrl}${modelPath}`
+      
       loader.load(modelUrl, (gltf) => {
-        this.skull = gltf.scene
-        this.skull.traverse((child) => {
-          if (child.isMesh) {
-            child.castShadow = true
-            child.receiveShadow = true
-            
-            // Replace with physical bone material
-            const boneMaterial = new THREE.MeshStandardMaterial({
-              color: 0xffffff,      // Bone color (beige)
-              roughness: 0.8,       // Matte finish
-              metalness: 0.0,       // Not metallic
-              flatShading: false,   // Smooth shading
-              side: THREE.FrontSide
-            })
-            
-            child.material = boneMaterial
-          }
-        })
-        
-        // Create bounding box helper and spatial grid
-        const box = new THREE.Box3().setFromObject(this.skull)
-        this.boundingBoxHelper = new THREE.Box3Helper(box, 0xffffff)
-        this.boundingBoxHelper.visible = false
-        this.scene.add(this.boundingBoxHelper)
-        
-        // Create spatial grid subdivisions
-        this.boundingGrid = this.createBoundingGrid(box)
-        this.boundingGrid.visible = false
-        this.scene.add(this.boundingGrid)
-        
-        // Restore visibility state from parent component
-        this.$nextTick(() => {
-          // Trigger parent component to reapply the current checkbox states
-          this.$emit('model-loaded')
-          // Hide loading animation
-          this.isLoading = false
-        })
-        
-        this.scene.add(this.skull)
+        this.processLoadedModel(gltf.scene)
       }, undefined, (error) => {
-        console.error('Error loading model:', error);
-        // Hide loading animation on error too
+        console.error('Error loading model:', error)
         this.isLoading = false
       })
+    },
+
+    processLoadedModel(scene) {
+      this.skull = scene
+      this.skull.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true
+          child.receiveShadow = true
+          
+          // Replace with physical bone material
+          const boneMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,      // Bone color (beige)
+            roughness: 0.8,       // Matte finish
+            metalness: 0.0,       // Not metallic
+            flatShading: false,   // Smooth shading
+            side: THREE.FrontSide
+          })
+          
+          child.material = boneMaterial
+        }
+      })
+      
+      // Create bounding box helper and spatial grid
+      const box = new THREE.Box3().setFromObject(this.skull)
+      this.boundingBoxHelper = new THREE.Box3Helper(box, 0xffffff)
+      this.boundingBoxHelper.visible = false
+      this.scene.add(this.boundingBoxHelper)
+      
+      // Create spatial grid subdivisions
+      this.boundingGrid = this.createBoundingGrid(box)
+      this.boundingGrid.visible = false
+      this.scene.add(this.boundingGrid)
+      
+      // Restore visibility state from parent component
+      this.$nextTick(() => {
+        // Trigger parent component to reapply the current checkbox states
+        this.$emit('model-loaded')
+        // Hide loading animation
+        this.isLoading = false
+      })
+      
+      this.scene.add(this.skull)
     },
 
     randomizeCamera() {
