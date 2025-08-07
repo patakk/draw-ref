@@ -5,7 +5,7 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [vue()],
   publicDir: 'public',
-  base: './dist',
+  base: './',
   build: {
     assetsDir: 'assets',
     rollupOptions: {
