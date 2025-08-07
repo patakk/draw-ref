@@ -131,8 +131,8 @@ export default {
       boundingBoxVisible: false,
       postProcessingEnabled: true,
       panelCollapsed: false,
-      selectedModel: 'skull.glb',
-      availableModels: ['skull.glb', 'head.glb'],
+      selectedModel: 'asaro_low.glb',
+      availableModels: ['asaro_low.glb', 'asaro_high.glb', 'skull.glb', 'head.glb'],
       thresholdPoints: [
         { value: 0.33 },
         { value: 0.66 }

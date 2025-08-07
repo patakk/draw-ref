@@ -223,7 +223,7 @@ export default {
     },
 
     loadSkull() {
-      this.loadModel('skull.glb')
+      this.loadModel('asaro_low.glb')
     },
 
     loadModel(modelPath) {
