@@ -23,19 +23,19 @@
         <div class="slider-container">
           <label class="slider-label">Key</label>
           <input type="range" min="0.1" max="2" step="0.1" v-model="lightBrightness" @input="updateLightBrightness" class="slider">
-          <span>{{ parseFloat(lightBrightness).toFixed(1) }}</span>
+          <span class="slider-value">{{ parseFloat(lightBrightness).toFixed(1) }}</span>
           <input type="color" v-model="lightColor" @input="updateLightColor" class="color-picker">
         </div>
         <div class="slider-container">
           <label class="slider-label">Fill</label>
           <input type="range" min="0" max="2" step="0.1" v-model="light2Brightness" @input="updateLight2Brightness" class="slider">
-          <span>{{ parseFloat(light2Brightness).toFixed(1) }}</span>
+          <span class="slider-value">{{ parseFloat(light2Brightness).toFixed(1) }}</span>
           <input type="color" v-model="light2Color" @input="updateLight2Color" class="color-picker">
         </div>
         <div class="slider-container">
           <label class="slider-label">Ambient</label>
           <input type="range" min="0" max="1" step="0.01" v-model="ambientBrightness" @input="updateAmbientBrightness" class="slider">
-          <span>{{ parseFloat(ambientBrightness).toFixed(2) }}</span>
+          <span class="slider-value">{{ parseFloat(ambientBrightness).toFixed(2) }}</span>
           <input type="color" v-model="ambientColor" @input="updateAmbientColor" class="color-picker">
         </div>
         <button @click="randomizeLighting" class="btn-small">
@@ -49,7 +49,7 @@
         <div class="slider-container">
           <label class="slider-label">FOV</label>
           <input type="range" min="10" max="90" step="5" v-model="cameraFOV" @input="updateCameraFOV" class="slider">
-          <span>{{ parseFloat(cameraFOV).toFixed(0) }}°</span>
+          <span class="slider-value">{{ parseFloat(cameraFOV).toFixed(0) }}°</span>
         </div>
       </div>
       <div class="panel-section">
@@ -83,7 +83,7 @@
           <div v-for="(point, index) in thresholdPoints" :key="index" class="threshold-point">
             <label>Point {{ index + 1 }}</label>
             <input type="range" min="0" max="1" step="0.01" v-model="point.value" @input="adjustThresholds(index)" class="slider">
-            <span>{{ parseFloat(point.value).toFixed(2) }}</span>
+            <span class="slider-value">{{ parseFloat(point.value).toFixed(2) }}</span>
           </div>
         </div>
       </div>
@@ -549,9 +549,9 @@ export default {
   width: 100%;
 }
 
-.panel-section span {
+.slider-value {
   font-size: 11px;
-  color: #000000;
+  color: #ffffffab;
   font-weight: 600;
   min-width: 40px;
   text-align: right;
