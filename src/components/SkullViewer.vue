@@ -87,15 +87,15 @@ export default {
     async loadShaders() {
       try {
         // Load threshold shaders
-        const thresholdVertResponse = await fetch('/src/shaders/threshold.vert')
-        const thresholdFragResponse = await fetch('/src/shaders/threshold.frag')
+        const thresholdVertResponse = await fetch('./src/shaders/threshold.vert')
+        const thresholdFragResponse = await fetch('./src/shaders/threshold.frag')
         
         this.thresholdShader.vertexShader = await thresholdVertResponse.text()
         this.thresholdShader.fragmentShader = await thresholdFragResponse.text()
         
         // Load dither shaders
-        const ditherVertResponse = await fetch('/src/shaders/dither.vert')
-        const ditherFragResponse = await fetch('/src/shaders/dither.frag')
+        const ditherVertResponse = await fetch('./src/shaders/dither.vert')
+        const ditherFragResponse = await fetch('./src/shaders/dither.frag')
         
         this.ditherShader.vertexShader = await ditherVertResponse.text()
         this.ditherShader.fragmentShader = await ditherFragResponse.text()
