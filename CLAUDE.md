@@ -11,11 +11,11 @@ This is a Vue.js 3D skull viewer application for drawing reference, built with T
 
 ### Core Components
 1. **App.vue**: Main application with UI controls panel
-2. **SkullViewer.vue**: Three.js 3D rendering engine and scene management
+2. **ModelViewer.vue**: Three.js 3D rendering engine and scene management
 
 ### Key Features
 
-#### 3D Rendering (SkullViewer.vue)
+#### 3D Rendering (ModelViewer.vue)
 - **Three.js Scene**: Camera, renderer, lights, and 3D models
 - **Models**: Multiple skull models (asaro_low.glb, asaro_high.glb, skull.glb, head.glb)
 - **Post-processing**: FXAA, SMAA, bloom, dithering, threshold effects
@@ -72,7 +72,7 @@ This is a Vue.js 3D skull viewer application for drawing reference, built with T
 src/
 ├── App.vue                 # Main app with UI panel
 ├── components/
-│   └── SkullViewer.vue    # 3D engine and rendering
+│   └── ModelViewer.vue    # 3D engine and rendering
 └── shaders/               # Custom shader files
     ├── threshold.vert
     ├── threshold.frag

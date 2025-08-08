@@ -135,7 +135,7 @@
     <div class="kofi-link">
       <a href='https://ko-fi.com/U7U01BB9OI' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/brandasset/v2/kofi_symbol.png' border='0' alt='contribute' /></a>
     </div>
-    <SkullViewer 
+    <ModelViewer 
       ref="skullViewer" 
       :base-camera-distance="baseCameraDistance"
       :ambient-master="ambientMaster" 
@@ -151,12 +151,12 @@
 </template>
 
 <script>
-import SkullViewer from './components/SkullViewer.vue'
+import ModelViewer from './components/ModelViewer.vue'
 
 export default {
   name: 'App',
   components: {
-    SkullViewer
+    ModelViewer
   },
   data() {
     const colors = this.generateRandomColors()

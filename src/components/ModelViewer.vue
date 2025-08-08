@@ -19,7 +19,7 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 
 export default {
-  name: 'SkullViewer',
+  name: 'ModelViewer',
   props: {
     baseCameraDistance: { type: Number, default: 0.8 },
     ambientMaster: { type: Number, default: 1.6 },
