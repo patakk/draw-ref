@@ -129,6 +129,20 @@
             <span class="slider-value">{{ parseFloat(point.value).toFixed(2) }}</span>
           </div>
         </div>
+        
+        <div class="panel-section">
+          <div class="section-header">
+            <label>Raytracing</label>
+          </div>
+          <div class="raytracing-controls">
+            <button @click="showRaytracer = true" class="raytracing-button" :disabled="!modelLoaded">
+              <font-awesome-icon icon="cube" />
+              Start Raytracing
+            </button>
+            <small v-if="!modelLoaded" class="disabled-text">Load a model first</small>
+          </div>
+        </div>
+        
       </div>
       </div>
     </div>
@@ -147,16 +161,30 @@
       @model-loaded="onModelLoaded"
       @camera-angle-changed="onCameraAngleChanged"
     />
+    
+    <RayTracer 
+      :visible="showRaytracer"
+      @close="showRaytracer = false"
+    />
   </div>
 </template>
 
 <script>
 import ModelViewer from './components/ModelViewer.vue'
+import RayTracer from './components/RayTracer.vue'
 
 export default {
   name: 'App',
   components: {
-    ModelViewer
+    ModelViewer,
+    RayTracer
+  },
+  provide() {
+    return {
+      getThreeJSScene: () => {
+        return this.$refs.skullViewer?.skull || null
+      }
+    }
   },
   data() {
     const colors = this.generateRandomColors()
@@ -181,6 +209,8 @@ export default {
       panelCollapsed: false,
       selectedModel: 'asaro_low.glb',
       availableModels: ['asaro_low.glb', 'asaro_high.glb', 'skull.glb'],
+      showRaytracer: false,
+      modelLoaded: false,
       thresholdPoints: [
         { value: 0.33 },
         { value: 0.66 }
@@ -382,6 +412,7 @@ export default {
       // Reapply current checkbox states after model loads
       this.$refs.skullViewer.setBoundingBoxVisible(this.boundingBoxVisible)
       this.$refs.skullViewer.setBoundingGridVisible(this.boundingGridVisible)
+      this.modelLoaded = true
     },
     onCameraAngleChanged(angles) {
       // Update sliders to reflect actual camera position
@@ -470,6 +501,7 @@ export default {
   border: none; /* Remove default border */
   border-radius: 2px; /* Optional: add slight rounding */
   box-shadow: none; /* Remove any shadow */
+  appearance: none; /* Remove default styling on some browsers */
   -webkit-appearance: none; /* Remove default styling on some browsers */
 }
 
@@ -823,9 +855,50 @@ body {
     top: 2em;
   }
 
-
 .kofi-link {
   bottom: 2em;
 }
+}
+
+/* Raytracing controls */
+.raytracing-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.raytracing-button {
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.raytracing-button:hover:not(:disabled) {
+  background: linear-gradient(45deg, #45a049, #4CAF50);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.raytracing-button:disabled {
+  background: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.disabled-text {
+  color: #888;
+  font-style: italic;
+  text-align: center;
 }
 </style>
